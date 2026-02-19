@@ -21,7 +21,9 @@ def ensure_output_dir(path: Path) -> Path:
 
 
 def format_transcript_markdown(
-    transcript: Transcript, summary: Summary | None = None
+    transcript: Transcript,
+    summary: Summary | None = None,
+    raw_text: bool = False,
 ) -> str:
     """Format a transcript (and optional summary) as markdown."""
     lines: list[str] = []
@@ -58,10 +60,14 @@ def format_transcript_markdown(
     lines.append("## Transcript\n")
 
     if transcript.utterances:
-        for utt in transcript.utterances:
-            ts = format_timestamp(utt.start)
-            name = utt.speaker_name or f"Speaker {utt.speaker}"
-            lines.append(f"**[{ts}] {name}:** {utt.text}\n")
+        if raw_text:
+            for utt in transcript.utterances:
+                lines.append(f"{utt.text}\n")
+        else:
+            for utt in transcript.utterances:
+                ts = format_timestamp(utt.start)
+                name = utt.speaker_name or f"Speaker {utt.speaker}"
+                lines.append(f"**[{ts}] {name}:** {utt.text}\n")
     else:
         lines.append(transcript.raw_text)
 
@@ -79,6 +85,13 @@ def format_transcript_text(transcript: Transcript) -> str:
     else:
         lines.append(transcript.raw_text)
     return "\n".join(lines)
+
+
+def format_transcript_raw_text(transcript: Transcript) -> str:
+    """Format transcript as raw text (no timestamps or speaker labels)."""
+    if transcript.utterances:
+        return "\n".join(utt.text for utt in transcript.utterances)
+    return transcript.raw_text
 
 
 def format_course_diff_markdown(diff: CourseDiff, week: str = "") -> str:

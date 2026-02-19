@@ -20,6 +20,7 @@ from .utils import (
     ensure_output_dir,
     format_course_diff_markdown,
     format_transcript_markdown,
+    format_transcript_raw_text,
     format_transcript_text,
     format_weekly_todo_markdown,
 )
@@ -98,6 +99,12 @@ def transcribe(
     file: Path = typer.Argument(..., help="Audio or video file to transcribe"),
     output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", "-o", help="Output directory"),
     format: str = typer.Option("markdown", "--format", help="Output format: markdown, json, text"),
+    raw_text: bool = typer.Option(
+        False,
+        "--no-times",
+        "--raw-text",
+        help="Hide timestamps and speaker names in transcript output (text/markdown)",
+    ),
     no_summary: bool = typer.Option(False, "--no-summary", help="Skip AI summarization"),
     no_diarize: bool = typer.Option(False, "--no-diarize", help="Disable speaker detection"),
     speakers: str = typer.Option("", "--speakers", help="Comma-separated speaker names"),
@@ -114,6 +121,13 @@ def transcribe(
 
     if not (is_audio_file(file) or is_video_file(file)):
         console.print(f"[red]Unsupported file type: {file.suffix}[/red]")
+        raise typer.Exit(1)
+
+    if raw_text and format == "json":
+        console.print(
+            "[red]--no-times/--raw-text is not supported with --format json.[/red] "
+            f"Current format: {format}"
+        )
         raise typer.Exit(1)
 
     ensure_output_dir(output)
@@ -175,11 +189,18 @@ def transcribe(
                 out_file.write_text(json.dumps(data, indent=2))
             elif format == "text":
                 out_file = output / f"{stem}.txt"
-                out_file.write_text(format_transcript_text(transcript))
+                text_output = (
+                    format_transcript_raw_text(transcript)
+                    if raw_text
+                    else format_transcript_text(transcript)
+                )
+                out_file.write_text(text_output)
             else:
                 out_file = output / f"{stem}.md"
                 out_file.write_text(
-                    format_transcript_markdown(transcript, summary)
+                    format_transcript_markdown(
+                        transcript, summary, raw_text=raw_text
+                    )
                 )
 
             console.print(f"\n[bold green]Output:[/bold green] {out_file}")
