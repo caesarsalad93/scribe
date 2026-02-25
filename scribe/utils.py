@@ -94,30 +94,41 @@ def format_transcript_raw_text(transcript: Transcript) -> str:
     return transcript.raw_text
 
 
-def format_course_diff_markdown(diff: CourseDiff, week: str = "") -> str:
-    """Format a course diff as markdown."""
+def format_course_diff_markdown(
+    diff: CourseDiff,
+    week: str = "",
+    transcript: Transcript | None = None,
+    summary: Summary | None = None,
+) -> str:
+    """Format course output: action items, summary, and transcript."""
     lines: list[str] = []
-    title = f"# Course Diff — Week {week}" if week else "# Course Diff"
+    title = f"# Action Items — Week {week}" if week else "# Action Items"
     lines.append(f"{title}\n")
 
-    if diff.additions:
-        lines.append("## In Video Only (Additions)\n")
-        for item in diff.additions:
-            lines.append(f"- {item}")
-        lines.append("")
+    for item in diff.action_items:
+        lines.append(f"- [ ] {item.description}")
+    lines.append("")
 
-    if diff.omissions:
-        lines.append("## In Text Only (Omissions)\n")
-        for item in diff.omissions:
-            lines.append(f"- {item}")
-        lines.append("")
+    if summary:
+        lines.append("---\n")
+        if summary.title:
+            lines.append(f"## {summary.title}\n")
+        if summary.summary:
+            lines.append(f"{summary.summary}\n")
+        if summary.key_points:
+            lines.append("### Key Points\n")
+            for point in summary.key_points:
+                lines.append(f"- {point}")
+            lines.append("")
 
-    if diff.action_items:
-        lines.append("## Action Items\n")
-        for item in diff.action_items:
-            priority_tag = f" [{item.priority}]" if item.priority != "normal" else ""
-            lines.append(f"- [ ] {item.description}{priority_tag}")
-        lines.append("")
+    if transcript:
+        lines.append("---\n")
+        lines.append("## Transcript\n")
+        if transcript.utterances:
+            for utt in transcript.utterances:
+                lines.append(f"{utt.text}\n")
+        else:
+            lines.append(transcript.raw_text)
 
     return "\n".join(lines)
 

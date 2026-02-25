@@ -16,6 +16,7 @@ from .config import DEFAULT_DEEPGRAM_MODEL, DEFAULT_LANGUAGE, DEFAULT_OUTPUT_DIR
 from .models import Summary, Transcript
 from .transcription.audio import is_audio_file, is_video_file, prepare_audio
 from .transcription.deepgram_provider import DeepgramProvider
+from .transcription.youtube import download_youtube_audio
 from .utils import (
     ensure_output_dir,
     format_course_diff_markdown,
@@ -212,6 +213,112 @@ def transcribe(
     asyncio.run(_run())
 
 
+@app.command("transcribe-url")
+def transcribe_url(
+    url: str = typer.Argument(..., help="YouTube video URL"),
+    output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", "-o", help="Output directory"),
+    format: str = typer.Option("markdown", "--format", help="Output format: markdown, json, text"),
+    raw_text: bool = typer.Option(
+        False,
+        "--no-times",
+        "--raw-text",
+        help="Hide timestamps and speaker names in transcript output (text/markdown)",
+    ),
+    no_summary: bool = typer.Option(False, "--no-summary", help="Skip AI summarization"),
+    no_diarize: bool = typer.Option(False, "--no-diarize", help="Disable speaker detection"),
+    speakers: str = typer.Option("", "--speakers", help="Comma-separated speaker names"),
+    model: str = typer.Option(DEFAULT_DEEPGRAM_MODEL, "--model", help="Deepgram model"),
+    language: str = typer.Option(DEFAULT_LANGUAGE, "--language", help="Language code"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging"),
+) -> None:
+    """Download YouTube audio and transcribe it with optional summarization."""
+    _setup_logging(verbose)
+
+    if raw_text and format == "json":
+        console.print(
+            "[red]--no-times/--raw-text is not supported with --format json.[/red] "
+            f"Current format: {format}"
+        )
+        raise typer.Exit(1)
+
+    ensure_output_dir(output)
+
+    async def _run() -> None:
+        console.print(f"[bold]Downloading audio:[/bold] {url}")
+        try:
+            audio_path, temp_dir = download_youtube_audio(url)
+        except Exception as e:
+            console.print(f"[red]Download failed: {e}[/red]")
+            raise typer.Exit(1)
+
+        try:
+            console.print(f"  [green]Downloaded:[/green] {audio_path.name}")
+            console.print(f"[bold]Transcribing:[/bold] {audio_path.name}")
+
+            provider = DeepgramProvider()
+            transcript = await provider.transcribe(
+                str(audio_path),
+                diarize=not no_diarize,
+                model=model,
+                language=language,
+            )
+            transcript = transcript.model_copy(update={"source_file": audio_path.name})
+
+            console.print(
+                f"  [green]Done.[/green] Duration: {transcript.duration:.1f}s, "
+                f"Speakers: {len(transcript.speakers)}"
+            )
+
+            if speakers:
+                name_list = [n.strip() for n in speakers.split(",")]
+                transcript = _assign_speaker_names(transcript, name_list)
+            elif not no_diarize and len(transcript.speakers) > 1:
+                transcript = _prompt_speaker_names(transcript)
+
+            summary: Summary | None = None
+            if not no_summary:
+                console.print("  Generating summary...")
+                text_for_summary = (
+                    format_transcript_text(transcript)
+                    if transcript.utterances
+                    else transcript.raw_text
+                )
+                try:
+                    summary = await summarize_transcript(text_for_summary)
+                    console.print("  [green]Summary generated.[/green]")
+                except Exception as e:
+                    console.print(f"  [yellow]Summary failed: {e}[/yellow]")
+
+            stem = audio_path.stem or "youtube_audio"
+            if format == "json":
+                out_file = output / f"{stem}.json"
+                data = transcript.model_dump()
+                if summary:
+                    data["summary"] = summary.model_dump()
+                out_file.write_text(json.dumps(data, indent=2))
+            elif format == "text":
+                out_file = output / f"{stem}.txt"
+                text_output = (
+                    format_transcript_raw_text(transcript)
+                    if raw_text
+                    else format_transcript_text(transcript)
+                )
+                out_file.write_text(text_output)
+            else:
+                out_file = output / f"{stem}.md"
+                out_file.write_text(
+                    format_transcript_markdown(
+                        transcript, summary, raw_text=raw_text
+                    )
+                )
+
+            console.print(f"\n[bold green]Output:[/bold green] {out_file}")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    asyncio.run(_run())
+
+
 @app.command()
 def course(
     video: Path = typer.Argument(..., help="Video file to transcribe"),
@@ -258,20 +365,31 @@ def course(
             else transcript.raw_text
         )
 
-        # Diff
-        console.print("  Analyzing differences...")
+        # Summarize
+        summary: Summary | None = None
+        console.print("  Generating summary...")
+        try:
+            summary = await summarize_transcript(transcript_text)
+            console.print("  [green]Summary generated.[/green]")
+        except Exception as e:
+            console.print(f"  [yellow]Summary failed: {e}[/yellow]")
+
+        # Extract action items
+        console.print("  Extracting action items...")
         diff = await diff_course_content(transcript_text, course_text)
         console.print(
-            f"  [green]Found {len(diff.additions)} additions, "
-            f"{len(diff.omissions)} omissions, "
-            f"{len(diff.action_items)} action items.[/green]"
+            f"  [green]Found {len(diff.action_items)} action items.[/green]"
         )
 
         # Write markdown
         stem = video.stem
-        md_file = output / f"{stem}_diff.md"
-        md_file.write_text(format_course_diff_markdown(diff, week))
-        console.print(f"  [bold green]Diff:[/bold green] {md_file}")
+        md_file = output / f"{stem}_actions.md"
+        md_file.write_text(
+            format_course_diff_markdown(
+                diff, week, transcript=transcript, summary=summary
+            )
+        )
+        console.print(f"  [bold green]Actions:[/bold green] {md_file}")
 
         # Write JSON sidecar for batch command
         json_file = output / f"{stem}_actions.json"

@@ -6,6 +6,7 @@ CLI tool for transcription and course-processing workflows.
 
 - Python `3.12+`
 - `ffmpeg` and `ffprobe` on PATH (needed for video inputs)
+- `yt-dlp` on PATH (needed for `transcribe-url`)
 - Deepgram API key
 - Anthropic API key (needed for summary/course/batch AI steps)
 
@@ -34,11 +35,35 @@ Run help:
 scribe --help
 ```
 
+Command patterns:
+
+```bash
+scribe <command> [args]
+scribe <command> --help
+```
+
+Examples:
+
+```bash
+scribe transcribe --help
+scribe transcribe-url --help
+scribe course --help
+scribe batch --help
+```
+
 Transcribe audio/video (writes to `./output` by default):
 
 ```bash
 scribe transcribe path/to/file.mp4
 ```
+
+Transcribe directly from YouTube URL:
+
+```bash
+scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+Note: this will not work: `scribe https://www.youtube.com/watch?v=VIDEO_ID`
 
 Useful options:
 
@@ -52,6 +77,7 @@ scribe transcribe path/to/file.mp4 --no-summary
 scribe transcribe path/to/file.mp4 --no-diarize
 scribe transcribe path/to/file.mp4 --speakers "Alex,Sam"
 scribe transcribe path/to/file.mp4 --model nova-2 --language en -v
+scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID" --format text --no-times
 ```
 
 Note: `--no-times` works with `--format text` and `--format markdown` (not `json`).
@@ -88,6 +114,10 @@ scribe batch output --output output/weekly_todo_week3.md -v
   - `output/<input-stem>.json` (`--format json`)
   - `output/<input-stem>.txt` (`--format text`)
   - `output/<input-stem>.txt` lines without times/speakers (`--format text --no-times`)
+- `scribe transcribe-url ...`:
+  - `output/<downloaded-title>.md` (default format)
+  - `output/<downloaded-title>.json` (`--format json`)
+  - `output/<downloaded-title>.txt` (`--format text`)
 - `scribe course ...`:
   - `output/<video-stem>_diff.md`
   - `output/<video-stem>_actions.json`
@@ -100,3 +130,28 @@ scribe batch output --output output/weekly_todo_week3.md -v
 source .venv/bin/activate
 scribe transcribe recordings/meeting.mp4 --speakers "Alex,Jordan"
 ```
+
+## Troubleshooting
+
+- `zsh: command not found: scribe`
+  - Install CLI into your active venv:
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -e .
+    which scribe
+    ```
+  - In new terminal tabs, re-activate the venv:
+    ```bash
+    source .venv/bin/activate
+    ```
+- YouTube URL command fails
+  - Use the correct command:
+    ```bash
+    scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID"
+    ```
+  - Verify tools are installed:
+    ```bash
+    yt-dlp --version
+    ffmpeg -version
+    ```

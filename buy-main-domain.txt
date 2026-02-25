@@ -1,0 +1,41 @@
+This is one of those small, but "permissive"  steps, where everything after this depends on having it done, so we're going to do it on your first day.
+
+Why are we buying a domain?
+
+Acquiring a legitimate business domain (and after, email address) lets you do two things: 
+
+
+
+
+
+It lets you streamline OAuth for a lot of the automations you'll be testing and building. In particular, when you have a business email, you can one-click authenticate a variety of n8n and Make.com built-ins. You can't do this with a basic Gmail, so I recommend getting a legitimate email ASAP.
+
+
+
+It gives us a nice, branded email address we can use to communicate with prospects. Proposals and the like sent from @gmail or @outlook addresses don't perform as well, partly because they subcommunicate that you're not a real business.
+
+Also, a bonus—there are a variety of free discount codes and giveaways on the internet that only let you apply if you have a business email. People often share these in Maker School.
+
+So today, we're going to set one up in Google Workspace. I really don't recommend other platforms, because Workspace is the simplest and integrates natively with most of the Google suite, which you'll probably be using (most people do). 
+
+Also, anecdotally, more Upwork projects require experience with the Google Suite than the Microsoft suite, so to make your life easier and optimize 0 -> 1, it's what I'd personally go with. 
+
+
+
+If you choose something different (Outlook or a related service), that's fine, but you'll have to adapt some future modules to the specifics of that service. 
+
+Your task
+
+This involves two steps: buying a domain and then setting up Google Workspace.
+
+1. First, buy your domain
+
+I recommend using Namecheap. They often have promotional codes for first-time buyers that shave a significant amount off of the purchase price.
+
+Just head over here, enter the domain of the business name you chose earlier, and buy it.
+
+2. Then, set up Workspace
+
+This is fairly straightforward—head over to Workspace, enter the business name you chose earlier, and follow the steps.
+
+Good to go? Congrats! You're already done 2 out of the 3 tasks for today.
