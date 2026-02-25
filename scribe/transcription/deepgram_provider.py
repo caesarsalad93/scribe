@@ -4,8 +4,13 @@ import asyncio
 from pathlib import Path
 
 from deepgram import DeepgramClient
+from httpx import ReadTimeout
 
-from ..config import get_deepgram_api_key
+from ..config import (
+    get_deepgram_api_key,
+    get_deepgram_max_retries,
+    get_deepgram_timeout_seconds,
+)
 from ..models import Transcript, Utterance
 
 
@@ -51,15 +56,26 @@ class DeepgramProvider:
         model: str,
         language: str,
     ) -> object:
-        return self.client.listen.v1.media.transcribe_file(
-            request=data,
-            model=model,
-            language=language,
-            smart_format=True,
-            diarize=diarize,
-            utterances=True,
-            punctuate=True,
-        )
+        try:
+            return self.client.listen.v1.media.transcribe_file(
+                request=data,
+                model=model,
+                language=language,
+                smart_format=True,
+                diarize=diarize,
+                utterances=True,
+                punctuate=True,
+                request_options={
+                    "timeout_in_seconds": get_deepgram_timeout_seconds(),
+                    "max_retries": get_deepgram_max_retries(),
+                },
+            )
+        except ReadTimeout as e:
+            raise RuntimeError(
+                "Deepgram request timed out. "
+                "Increase DEEPGRAM_TIMEOUT_SECONDS in .env "
+                "(for example 900 or 1200) and retry."
+            ) from e
 
     def _parse_response(self, response: object, source_file: str) -> Transcript:
         # SDK v5 returns a ListenV1Response with .results.channels etc.

@@ -19,6 +19,36 @@ def get_deepgram_api_key() -> str:
     return key
 
 
+def get_deepgram_timeout_seconds() -> int:
+    value = os.environ.get("DEEPGRAM_TIMEOUT_SECONDS", "600")
+    try:
+        timeout = int(value)
+    except ValueError as e:
+        raise RuntimeError(
+            "DEEPGRAM_TIMEOUT_SECONDS must be an integer."
+        ) from e
+    if timeout <= 0:
+        raise RuntimeError(
+            "DEEPGRAM_TIMEOUT_SECONDS must be greater than 0."
+        )
+    return timeout
+
+
+def get_deepgram_max_retries() -> int:
+    value = os.environ.get("DEEPGRAM_MAX_RETRIES", "2")
+    try:
+        retries = int(value)
+    except ValueError as e:
+        raise RuntimeError(
+            "DEEPGRAM_MAX_RETRIES must be an integer."
+        ) from e
+    if retries < 0:
+        raise RuntimeError(
+            "DEEPGRAM_MAX_RETRIES cannot be negative."
+        )
+    return retries
+
+
 def get_anthropic_api_key() -> str:
     key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not key:
@@ -31,4 +61,4 @@ def get_anthropic_api_key() -> str:
 DEFAULT_OUTPUT_DIR = Path("./output")
 DEFAULT_DEEPGRAM_MODEL = "nova-2"
 DEFAULT_LANGUAGE = "en"
-DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
+DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6"

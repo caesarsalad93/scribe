@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import shutil
+import time
 from pathlib import Path
 
 import typer
@@ -246,7 +247,24 @@ def transcribe_url(
     async def _run() -> None:
         console.print(f"[bold]Downloading audio:[/bold] {url}")
         try:
-            audio_path, temp_dir = download_youtube_audio(url)
+            last_logged = {"msg": "", "at": 0.0}
+
+            def _on_download_progress(message: str) -> None:
+                # Live status for terminals that support Rich dynamic rendering.
+                status.update(message)
+                # Fallback: persistent log lines for terminals that don't render live status updates.
+                now = time.monotonic()
+                if message != last_logged["msg"] and (
+                    now - last_logged["at"] >= 2.0 or "complete" in message.lower()
+                ):
+                    console.print(f"  {message}")
+                    last_logged["msg"] = message
+                    last_logged["at"] = now
+
+            with console.status("Downloading audio...") as status:
+                audio_path, temp_dir = download_youtube_audio(
+                    url, progress_callback=_on_download_progress
+                )
         except Exception as e:
             console.print(f"[red]Download failed: {e}[/red]")
             raise typer.Exit(1)

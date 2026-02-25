@@ -14,7 +14,7 @@ CLI tool for transcription and course-processing workflows.
 
 ```bash
 # from repo root
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 cp .env.example .env
@@ -24,6 +24,8 @@ Edit `.env`:
 
 ```env
 DEEPGRAM_API_KEY=your_key_here
+DEEPGRAM_TIMEOUT_SECONDS=600
+DEEPGRAM_MAX_RETRIES=2
 ANTHROPIC_API_KEY=your_key_here
 ```
 
@@ -82,6 +84,14 @@ scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID" --format text -
 
 Note: `--no-times` works with `--format text` and `--format markdown` (not `json`).
 
+## Runtime Notes
+
+- `transcribe-url` now shows live download progress (percent, size, speed, ETA) and fallback log lines in terminals that do not render dynamic status updates.
+- Deepgram requests use configurable timeout/retry settings from `.env`:
+  - `DEEPGRAM_TIMEOUT_SECONDS` (default `600`)
+  - `DEEPGRAM_MAX_RETRIES` (default `2`)
+- Summarization is more detailed and includes JSON-parse recovery + one automatic retry if the model returns invalid JSON.
+
 Course mode (transcribe video, compare with text file, extract action items):
 
 ```bash
@@ -136,7 +146,7 @@ scribe transcribe recordings/meeting.mp4 --speakers "Alex,Jordan"
 - `zsh: command not found: scribe`
   - Install CLI into your active venv:
     ```bash
-    python3 -m venv .venv
+    python3.12 -m venv .venv
     source .venv/bin/activate
     pip install -e .
     which scribe
