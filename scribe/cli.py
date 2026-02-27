@@ -17,7 +17,7 @@ from .config import DEFAULT_DEEPGRAM_MODEL, DEFAULT_LANGUAGE, DEFAULT_OUTPUT_DIR
 from .models import Summary, Transcript
 from .transcription.audio import is_audio_file, is_video_file, prepare_audio
 from .transcription.deepgram_provider import DeepgramProvider
-from .transcription.youtube import download_youtube_audio
+from .transcription.youtube import download_url_video, download_youtube_audio
 from .utils import (
     ensure_output_dir,
     format_course_diff_markdown,
@@ -335,6 +335,45 @@ def transcribe_url(
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     asyncio.run(_run())
+
+
+@app.command("download-url")
+def download_url(
+    url: str = typer.Argument(..., help="Media URL supported by yt-dlp"),
+    output: Path = typer.Option(DEFAULT_OUTPUT_DIR, "--output", "-o", help="Output directory"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose logging"),
+) -> None:
+    """Download video-only output from a URL (no transcription)."""
+    _setup_logging(verbose)
+    ensure_output_dir(output)
+
+    console.print(f"[bold]Downloading video:[/bold] {url}")
+    try:
+        last_logged = {"msg": "", "at": 0.0}
+
+        def _on_download_progress(message: str) -> None:
+            # Live status for terminals that support Rich dynamic rendering.
+            status.update(message)
+            # Fallback: persistent log lines for terminals that don't render live status updates.
+            now = time.monotonic()
+            if message != last_logged["msg"] and (
+                now - last_logged["at"] >= 2.0 or "complete" in message.lower()
+            ):
+                console.print(f"  {message}")
+                last_logged["msg"] = message
+                last_logged["at"] = now
+
+        with console.status("Downloading video...") as status:
+            video_path = download_url_video(
+                url,
+                output,
+                progress_callback=_on_download_progress,
+            )
+    except Exception as e:
+        console.print(f"[red]Download failed: {e}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold green]Downloaded:[/bold green] {video_path}")
 
 
 @app.command()

@@ -6,7 +6,7 @@ CLI tool for transcription and course-processing workflows.
 
 - Python `3.12+`
 - `ffmpeg` and `ffprobe` on PATH (needed for video inputs)
-- `yt-dlp` on PATH (needed for `transcribe-url`)
+- `yt-dlp` on PATH (needed for `transcribe-url` and `download-url`)
 - Deepgram API key
 - Anthropic API key (needed for summary/course/batch AI steps)
 
@@ -49,6 +49,7 @@ Examples:
 ```bash
 scribe transcribe --help
 scribe transcribe-url --help
+scribe download-url --help
 scribe course --help
 scribe batch --help
 ```
@@ -63,6 +64,12 @@ Transcribe directly from YouTube URL:
 
 ```bash
 scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+Download video from a URL without transcription (works with yt-dlp supported URLs):
+
+```bash
+scribe download-url "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 Note: this will not work: `scribe https://www.youtube.com/watch?v=VIDEO_ID`
@@ -80,6 +87,7 @@ scribe transcribe path/to/file.mp4 --no-diarize
 scribe transcribe path/to/file.mp4 --speakers "Alex,Sam"
 scribe transcribe path/to/file.mp4 --model nova-2 --language en -v
 scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID" --format text --no-times
+scribe download-url "https://www.youtube.com/watch?v=VIDEO_ID" --output output/videos
 ```
 
 Note: `--no-times` works with `--format text` and `--format markdown` (not `json`).
@@ -87,6 +95,7 @@ Note: `--no-times` works with `--format text` and `--format markdown` (not `json
 ## Runtime Notes
 
 - `transcribe-url` now shows live download progress (percent, size, speed, ETA) and fallback log lines in terminals that do not render dynamic status updates.
+- `download-url` saves best available video+audio to your output directory, skipping if the same output title already exists.
 - Deepgram requests use configurable timeout/retry settings from `.env`:
   - `DEEPGRAM_TIMEOUT_SECONDS` (default `600`)
   - `DEEPGRAM_MAX_RETRIES` (default `2`)
@@ -128,6 +137,8 @@ scribe batch output --output output/weekly_todo_week3.md -v
   - `output/<downloaded-title>.md` (default format)
   - `output/<downloaded-title>.json` (`--format json`)
   - `output/<downloaded-title>.txt` (`--format text`)
+- `scribe download-url ...`:
+  - `output/<downloaded-title>.<ext>` (video file, extension depends on source/merge output)
 - `scribe course ...`:
   - `output/<video-stem>_diff.md`
   - `output/<video-stem>_actions.json`
@@ -155,10 +166,11 @@ scribe transcribe recordings/meeting.mp4 --speakers "Alex,Jordan"
     ```bash
     source .venv/bin/activate
     ```
-- YouTube URL command fails
+- URL command fails
   - Use the correct command:
     ```bash
     scribe transcribe-url "https://www.youtube.com/watch?v=VIDEO_ID"
+    scribe download-url "https://www.youtube.com/watch?v=VIDEO_ID"
     ```
   - Verify tools are installed:
     ```bash
